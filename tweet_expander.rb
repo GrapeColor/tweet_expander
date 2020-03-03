@@ -15,6 +15,7 @@ class TweetExpander
     @relations = Hash.new { |hash, key| hash[key] = [] }
 
     register_events
+    admin_events
   end
 
   # BOT起動
@@ -61,6 +62,8 @@ class TweetExpander
 
     # メンションイベント
     @bot.mention do |event|
+      next if event.content =~ /^<@!?\d+>\s+admin/
+
       event.send_embed do |embed|
         embed.color = 0x1da1f2
         embed.title = "Tweet Expander の使い方"
@@ -69,7 +72,7 @@ class TweetExpander
 ```!https://twitter.com/～```ツイートのURLの直前に「!」を付ける
 
 **●ツイートのスレッドを表示**
-```ツイートID!https://twitter.com/～```ツイートのURLの直前に、表示したいスレッドの最後のツイートのID(数字)と「!」を付ける
+```ツイートID!https://twitter.com/～```ツイートのURLの直前に、表示したいスレッドの**最後のツイート**のID(数字)と「!」を付ける
 
 **●展開されたコンテンツの削除**
 コマンドを実行した元のメッセージを削除する
@@ -77,6 +80,28 @@ class TweetExpander
 **[このBOTをサーバーに導入](https://discordapp.com/api/oauth2/authorize?client_id=629507137995014164&permissions=19456&scope=bot)**
 **[その他の詳しい説明](https://github.com/GrapeColor/tweet_expander/blob/master/README.md)**
 DESC
+      end
+    end
+  end
+
+  # 管理者イベント
+  def admin_events
+    @bot.mention(in: ENV['ADMIN_CHANNEL_ID'].to_i, from: ENV['ADMIN_USER_ID'].to_i) do |event|
+      next if event.content !~ /^<@!?\d+>\s+admin\R```(ruby)?\R(.+)\R```/m
+
+      $stdout = StringIO.new
+
+      begin
+        eval("pp(#{$2})")
+        log = $stdout.string
+      rescue => exception
+        log = exception
+      end
+
+      $stdout = STDOUT
+
+      log.to_s.scan(/.{1,#{2000 - 8}}/m) do |split|
+        event.send_message("```\n#{split}\n```")
       end
     end
   end
