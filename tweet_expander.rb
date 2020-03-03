@@ -58,17 +58,38 @@ class TweetExpander
       end
       nil
     end
+
+    # メンションイベント
+    @bot.mention do |event|
+      event.send_embed do |embed|
+        embed.color = 0x1da1f2
+        embed.title = "Tweet Expander の使い方"
+        embed.description = <<DESC
+**●ツイートの引用ツイート・コンテンツを表示**
+```!https://twitter.com/～```ツイートのURLの直前に「!」を付ける
+
+**●ツイートのスレッドを表示**
+```ツイートID!https://twitter.com/～```ツイートのURLの直前に、表示したいスレッドの最後のツイートのID(数字)と「!」を付ける
+
+**●展開されたコンテンツの削除**
+コマンドを実行した元のメッセージを削除する
+
+**[このBOTをサーバーに導入](https://discordapp.com/api/oauth2/authorize?client_id=629507137995014164&permissions=19456&scope=bot)**
+**[その他の詳しい説明](https://github.com/GrapeColor/tweet_expander/blob/master/README.md)**
+DESC
+      end
+    end
   end
 
   # ツリーコンテンツ展開
   def expand_thread(first_id, last_id)
     return [] if first_id <= last_id
 
-    next_id = first_id
     urls = []
+    next_id = first_id
     25.times do
       break if next_id <= last_id
-      tweet = get_tweet(next_id)
+      break unless tweet = get_tweet(next_id)
       next_id = tweet.in_reply_to_status_id
       urls << tweet.url.to_s
     end
@@ -79,7 +100,7 @@ class TweetExpander
 
   # 引用コンテンツ展開
   def expand_quote(tweet_id)
-    tweet = get_tweet(tweet_id)
+    return [] unless tweet = get_tweet(tweet_id)
 
     # URLを展開
     if tweet.urls? && (tweet.attrs[:is_quote_status] || !tweet.media?)
